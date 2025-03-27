@@ -4,7 +4,7 @@ This code example demonstrates the blinking LED functionality implemented by Fre
 
 [View this README on GitHub.](https://github.com/Infineon/mtb-example-ce240823-blinky-freertos)
 
-[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyNDA4MjMiLCJTcGVjIE51bWJlciI6IjAwMi00MDgyMyIsIkRvYyBUaXRsZSI6IlBTT0MmdHJhZGU7IENvbnRyb2wgTUNVOiBGcmVlUlRPUyBibGlua3kiLCJyaWQiOiJzdWJyYW1hbml5YXAiLCJEb2MgdmVyc2lvbiI6IjEuMC4wIiwiRG9jIExhbmd1YWdlIjoiRW5nbGlzaCIsIkRvYyBEaXZpc2lvbiI6Ik1DRCIsIkRvYyBCVSI6IklDVyIsIkRvYyBGYW1pbHkiOiJQU09DIn0=)
+[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyNDA4MjMiLCJTcGVjIE51bWJlciI6IjAwMi00MDgyMyIsIkRvYyBUaXRsZSI6IlBTT0MmdHJhZGU7IENvbnRyb2wgTUNVOiBGcmVlUlRPUyBibGlua3kiLCJyaWQiOiJzdWJyYW1hbml5YXAiLCJEb2MgdmVyc2lvbiI6IjEuMC4xIiwiRG9jIExhbmd1YWdlIjoiRW5nbGlzaCIsIkRvYyBEaXZpc2lvbiI6Ik1DRCIsIkRvYyBCVSI6IklDVyIsIkRvYyBGYW1pbHkiOiJQU09DIn0=)
 
 ## Limitation
 
@@ -244,6 +244,7 @@ Document title: *CE240823* – *PSOC C3: FreeRTOS blinky*
  Version | Description of change
  ------- | ---------------------
  1.0.0   | New code example
+ 1.0.1   | RTOS abstraction added 
 
 <br>
 

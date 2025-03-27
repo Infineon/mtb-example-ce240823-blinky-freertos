@@ -239,7 +239,6 @@
                     <Parameters>
                         <Param id="dbgMode" value="SWD"/>
                         <Param id="traceModeParallel" value="0"/>
-                        <Param id="traceModeSerial" value="false"/>
                     </Parameters>
                 </Personality>
                 <Personality template="pin" version="3.0">
@@ -491,10 +490,25 @@
                 <Personality template="mxs40iho" version="1.0">
                     <Block location="srss[0].clock[0].iho[0]" locked="true"/>
                 </Personality>
+                <Personality template="ilo" version="3.0">
+                    <Block location="srss[0].clock[0].ilo[0]" locked="true"/>
+                    <Parameters>
+                        <Param id="hibernate" value="true"/>
+                    </Parameters>
+                </Personality>
                 <Personality template="imo" version="3.0">
                     <Block location="srss[0].clock[0].imo[0]" locked="true"/>
                     <Parameters>
                         <Param id="trim" value="1"/>
+                    </Parameters>
+                </Personality>
+                <Personality template="lfclk" version="3.0">
+                    <Block location="srss[0].clock[0].lfclk[0]" locked="true"/>
+                    <Parameters>
+                        <Param id="ClkLfCsv" value="false"/>
+                        <Param id="accuracyCsv" value="99"/>
+                        <Param id="sourceClock" value="ilo"/>
+                        <Param id="sourceClockCsv" value="IMO"/>
                     </Parameters>
                 </Personality>
                 <Personality template="pathmux" version="3.0">
@@ -542,6 +556,30 @@
                 <Personality template="timerclk" version="3.0">
                     <Block location="srss[0].clock[0].timerclk[0]" locked="true"/>
                 </Personality>
+                <Personality template="mcwdt" version="3.0">
+                    <Block location="srss[0].mcwdt[0]" locked="true">
+                        <Aliases>
+                            <Alias value="lptimer_0"/>
+                        </Aliases>
+                    </Block>
+                    <Parameters>
+                        <Param id="C0ClearOnMatch" value="FREE_RUNNING"/>
+                        <Param id="C0LowerLimit" value="0"/>
+                        <Param id="C0LowerLimitMode" value="CY_MCWDT_LOWER_LIMIT_MODE_NOTHING"/>
+                        <Param id="C0Match" value="32768"/>
+                        <Param id="C0Mode" value="CY_MCWDT_MODE_INT"/>
+                        <Param id="C1ClearOnMatch" value="FREE_RUNNING"/>
+                        <Param id="C1LowerLimit" value="0"/>
+                        <Param id="C1LowerLimitMode" value="CY_MCWDT_LOWER_LIMIT_MODE_NOTHING"/>
+                        <Param id="C1Match" value="32768"/>
+                        <Param id="C1Mode" value="CY_MCWDT_MODE_INT"/>
+                        <Param id="C2Mode" value="CY_MCWDT_MODE_NONE"/>
+                        <Param id="C2Period" value="0"/>
+                        <Param id="CascadeC0C1" value="true"/>
+                        <Param id="CascadeC1C2" value="false"/>
+                        <Param id="inFlash" value="true"/>
+                    </Parameters>
+                </Personality>
                 <Personality template="power_v2" version="1.0">
                     <Block location="srss[0].power[0]" locked="true"/>
                     <Parameters>
@@ -586,10 +624,9 @@
                         <Param id="RunMode" value="CY_TCPWM_COUNTER_CONTINUOUS"/>
                         <Param id="StartInput" value="CY_TCPWM_INPUT_DISABLED"/>
                         <Param id="StopInput" value="CY_TCPWM_INPUT_DISABLED"/>
-                        <Param id="copy_enable" value="false"/>
-                        <Param id="gf_depth" value="CY_GLITCH_FILTER_DEPTH_SUPPORT_VALUE_0"/>
                         <Param id="gf_enable" value="false"/>
                         <Param id="inFlash" value="true"/>
+                        <Param id="swap_enable" value="false"/>
                         <Param id="trigger0Event" value="CY_TCPWM_CNT_TRIGGER_ON_DISABLED"/>
                         <Param id="trigger1Event" value="CY_TCPWM_CNT_TRIGGER_ON_DISABLED"/>
                     </Parameters>
