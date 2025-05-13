@@ -1,10 +1,10 @@
 # PSOC&trade; Control MCU: FreeRTOS blinky
 
-This code example demonstrates the blinking LED functionality implemented by FreeRTOS tasks on the PSOC Control C3 MCU devices.
+This code example demonstrates the blinking LED functionality implemented by FreeRTOS with tickless sleep support on the PSOC Control C3 MCU devices.
 
 [View this README on GitHub.](https://github.com/Infineon/mtb-example-ce240823-blinky-freertos)
 
-[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyNDA4MjMiLCJTcGVjIE51bWJlciI6IjAwMi00MDgyMyIsIkRvYyBUaXRsZSI6IlBTT0MmdHJhZGU7IENvbnRyb2wgTUNVOiBGcmVlUlRPUyBibGlua3kiLCJyaWQiOiJzdWJyYW1hbml5YXAiLCJEb2MgdmVyc2lvbiI6IjEuMC4xIiwiRG9jIExhbmd1YWdlIjoiRW5nbGlzaCIsIkRvYyBEaXZpc2lvbiI6Ik1DRCIsIkRvYyBCVSI6IklDVyIsIkRvYyBGYW1pbHkiOiJQU09DIn0=)
+[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyNDA4MjMiLCJTcGVjIE51bWJlciI6IjAwMi00MDgyMyIsIkRvYyBUaXRsZSI6IlBTT0MmdHJhZGU7IENvbnRyb2wgTUNVOiBGcmVlUlRPUyBibGlua3kiLCJyaWQiOiJzdWJyYW1hbml5YXAiLCJEb2MgdmVyc2lvbiI6IjEuMC4yIiwiRG9jIExhbmd1YWdlIjoiRW5nbGlzaCIsIkRvYyBEaXZpc2lvbiI6Ik1DRCIsIkRvYyBCVSI6IklDVyIsIkRvYyBGYW1pbHkiOiJQU09DIn0=)
 
 ## Limitation
 
@@ -13,7 +13,7 @@ FreeRTOS does not support tickless sleep. Therefore Sleep mode is supported and 
 
 ## Requirements
 
-- [ModusToolbox&trade;](https://www.infineon.com/modustoolbox) v3.3 or later
+- [ModusToolbox&trade;](https://www.infineon.com/modustoolbox) v3.4 or later
 - Board support package (BSP) minimum required version for:
    - KIT_PSC3M5_EVK: 1.0.3
 - Programming language: C
@@ -245,6 +245,7 @@ Document title: *CE240823* – *PSOC C3: FreeRTOS blinky*
  ------- | ---------------------
  1.0.0   | New code example
  1.0.1   | RTOS abstraction added 
+ 1.0.2   | Added support for tickless sleep
 
 <br>
 

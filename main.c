@@ -1,13 +1,12 @@
 /*******************************************************************************
- * File Name:   main.c
+ * File Name        : main.c
  *
- * Description: This is the source code for Hello World Example using PDL APIs
- *              for ModusToolbox.
+ * Description      : This source file contains the main routine for non-secure
+ *                    application running on CM33 CPU.
  *
- * Related Document: See README.md
+ * Related Document : See README.md
  *
- *
- *******************************************************************************
+ ********************************************************************************
  * Copyright 2024-2025, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
@@ -43,259 +42,280 @@
 /*******************************************************************************
  * Header Files
  *******************************************************************************/
- #include "cy_pdl.h"
- #include "cybsp.h"
- #include "cy_retarget_io.h"
- #include "mtb_hal.h"
- 
- #ifdef COMPONENT_FREERTOS
- #include "FreeRTOS.h"
- #include "task.h"
- #endif
- #include "cyabs_rtos.h"
- #include "cyabs_rtos_impl.h"
- 
- #include "cycfg_peripherals.h"
- mtb_hal_lptimer_t lptimer_obj_overall;
- #include "semphr.h"
- /*******************************************************************************
-  * Macros
-  *******************************************************************************/
- #define BLINKY_TASK_NAME            ("Blinky")
- #define BLINKY_TASK_STACK_SIZE      (configMINIMAL_STACK_SIZE)
- #define BLINKY_TASK_PRIORITY        (tskIDLE_PRIORITY + 1)
- #define MAIN_TASK_NAME              ("Main")
- #define MAIN_TASK_STACK_SIZE        (configMINIMAL_STACK_SIZE)
- #define MAIN_TASK_PRIORITY          (tskIDLE_PRIORITY + 1)
- 
- /* USER LED toggle period in milliseconds */
- #define USER_LED_TOGGLE_PERIOD_MS   1000u
- 
- #if !defined _MTB_HAL_LPTIMER_RESET_TIME_US
- #if defined (CY_IP_M0S8WCO)
- #define _MTB_HAL_LPTIMER_RESET_TIME_US      (180)
- #else
- #define _MTB_HAL_LPTIMER_RESET_TIME_US       (62)
- #endif
- #endif
- 
- #if (defined (CY_IP_MXS40SRSS) && (CY_IP_MXS40SRSS_VERSION >= 2)) || ((SRSS_NUM_MCWDT_B) > 0)
- 
- #define  _Cy_MCWDT_Enable(base)     Cy_MCWDT_Unlock(base); \
-         Cy_MCWDT_Enable(base, (CY_MCWDT_CTR1 | CY_MCWDT_CTR2), _MTB_HAL_LPTIMER_RESET_TIME_US); \
-         Cy_MCWDT_Lock(base);
- #else
- #define _TEST_LPTIMER_CTRL          (CY_MCWDT_CTR0 | CY_MCWDT_CTR1 | CY_MCWDT_CTR2) /* _MTB_HAL_LPTIMER_CTRL */
- #define  _Cy_MCWDT_Enable(base)     Cy_MCWDT_Enable(base, _TEST_LPTIMER_CTRL, _MTB_HAL_LPTIMER_RESET_TIME_US);
- #endif
- 
- #define lptimer_IRQ lptimer_0_IRQ
-     const mtb_hal_lptimer_configurator_t* lptimer_hal_config_overall = (const mtb_hal_lptimer_configurator_t*) &lptimer_0_config;
-     const cy_stc_mcwdt_config_t* lptimer_config_overall  = (const cy_stc_mcwdt_config_t*)&lptimer_0_config;
- 
- /*******************************************************************************
-  * Global Variables
-  *******************************************************************************/
- /* RTOS semaphore */
- static SemaphoreHandle_t xSemaphore;
- 
- /* For the Retarget -IO (Debug UART) usage */
- static cy_stc_scb_uart_context_t    DEBUG_UART_context;           /** UART context */
- static mtb_hal_uart_t               DEBUG_UART_hal_obj;           /** Debug UART HAL object  */
- 
- /*******************************************************************************
-  * Function Prototypes
-  *******************************************************************************/
- cy_rslt_t init_lptimer(mtb_hal_lptimer_t* obj);
- static void lptimer_interrupt_handler(void);
- 
- 
- /*******************************************************************************
-  * Function Definitions
-  *******************************************************************************/
- 
- /*******************************************************************************
-  * Function Name: blinky_task
-  ********************************************************************************
-  * Summary:
-  *  This RTOS task toggles the User LED each time the semaphore is obtained.
-  *
-  * Parameters:
-  *  void *pvParameters : Task parameter defined during task creation (unused)
-  *
-  * Return:
-  *  The RTOS task never returns.
-  *
-  *******************************************************************************/
- void blinky_task(void *pvParameters)
- {
- 
-     (void) pvParameters;
-     for(;;)
-     {
-         /* Block until the semaphore is given */
-         xSemaphoreTake(xSemaphore, portMAX_DELAY);
- 
-         /* Toggle the USER LED state */
-         Cy_GPIO_Inv(CYBSP_USER_LED_PORT, CYBSP_USER_LED_PIN);
-     }
- }
- 
- /*******************************************************************************
-  * Function Name: main_task
-  ********************************************************************************
-  * Summary:
-  *  This RTOS task releases the semaphore every USER_LED_TOGGLE_PERIOD_MS.
-  *
-  * Parameters:
-  *  void *pvParameters : Task parameter defined during task creation (unused)
-  *
-  * Return:
-  *  The RTOS task never returns.
-  *
-  *******************************************************************************/
- static void main_task(void *pvParameters)
- {
-     (void) pvParameters;
- 
-     for(;;)
-     {
-         /* Block task for USER_LED_TOGGLE_PERIOD_MS. */
-         vTaskDelay(USER_LED_TOGGLE_PERIOD_MS);
- 
-         /* Release semaphore */
-         xSemaphoreGive(xSemaphore);
-     }
- }
- 
- /*******************************************************************************
-  * Function Name: main
-  ********************************************************************************
-  * This is the main function. It creates two tasks, initializes the semaphore
-  *  for synchronization between tasks, and starts the FreeRTOS scheduler.
-  *
-  *
-  * Parameters:
-  *  void
-  *
-  * Return:
-  *  int
-  *
-  *******************************************************************************/
- 
- int main(void)
- {
-     cy_rslt_t result;
-     BaseType_t retval;
- 
-     /* Initialize the device and board peripherals */
-     result = cybsp_init();
-     /* Board init failed. Stop program execution */
-     if (result != CY_RSLT_SUCCESS)
-     {
-         CY_ASSERT(0);
-     }
- 
-     /* Create the Semaphore for synchronization between Blinky and Main task */
-     xSemaphore = xSemaphoreCreateBinary();
-     if( xSemaphore == NULL )
-     {
-         CY_ASSERT(0);
-     }
- 
-     /* Enable global interrupts */
-     __enable_irq();
- 
-     result = init_lptimer(&lptimer_obj_overall);
-     if (CY_RSLT_SUCCESS != result)
-     {
-         return -1;
-     }
- 
-     /* Debug UART init */
-     result = (cy_rslt_t)Cy_SCB_UART_Init(DEBUG_UART_HW, &DEBUG_UART_config, &DEBUG_UART_context);
- 
-     /* UART init failed. Stop program execution */
-     if (result != CY_RSLT_SUCCESS)
-     {
-         CY_ASSERT(0);
-     }
- 
-     Cy_SCB_UART_Enable(DEBUG_UART_HW);
- 
-     /* Setup the HAL UART */
-     result = mtb_hal_uart_setup(&DEBUG_UART_hal_obj, &DEBUG_UART_hal_config, &DEBUG_UART_context, NULL);
- 
-     /* HAL UART init failed. Stop program execution */
-     if (result != CY_RSLT_SUCCESS)
-     {
-         CY_ASSERT(0);
-     }
- 
-     result = cy_retarget_io_init(&DEBUG_UART_hal_obj);
- 
-     /* HAL retarget_io init failed. Stop program execution */
-     if (result != CY_RSLT_SUCCESS)
-     {
-         CY_ASSERT(0);
-     }
- 
-     /* \x1b[2J\x1b[;H - ANSI ESC sequence for clear screen */
-     printf("\x1b[2J\x1b[;H");
- 
-     printf("****************** "
-             "PDL: FreeRTOS Blinky! Example "
-             "****************** \r\n\n");
- 
-     retval = xTaskCreate(blinky_task, BLINKY_TASK_NAME, BLINKY_TASK_STACK_SIZE, NULL, BLINKY_TASK_PRIORITY, NULL );
-     if (retval != pdPASS)
-     {
-         CY_ASSERT(0);
-     }
- 
-     retval = xTaskCreate(main_task, MAIN_TASK_NAME, MAIN_TASK_STACK_SIZE, NULL, MAIN_TASK_PRIORITY, NULL );
-     if (retval != pdPASS)
-     {
-         CY_ASSERT(0);
-     }
- 
-     /* Start the scheduler */
-     vTaskStartScheduler();
-     for(;;)
-     {
-         /* vTaskStartScheduler never returns */
-     }
- 
- }
- 
- static void lptimer_interrupt_handler(void)
- {
- }
- 
- cy_rslt_t init_lptimer(mtb_hal_lptimer_t* obj)
- {
-     cy_rslt_t result = (cy_rslt_t) Cy_MCWDT_Init(lptimer_hal_config_overall->base, lptimer_config_overall);
-     if(CY_RSLT_SUCCESS != result)
-     {
-         return -1;
-     }
-     _Cy_MCWDT_Enable(lptimer_hal_config_overall->base);
- 
-     if(CY_RSLT_SUCCESS != result)
-     {
-         return -1;
-     }
- 
-     cy_stc_sysint_t lptimer_intr_cfg =
-     {
-         .intrSrc = lptimer_IRQ,
-         .intrPriority = 7u
-     };
- 
-     Cy_SysInt_Init(&lptimer_intr_cfg, lptimer_interrupt_handler);
-     NVIC_EnableIRQ(lptimer_intr_cfg.intrSrc);
- 
-     return CY_RSLT_SUCCESS;
- }
- 
- /* [] END OF FILE */
+
+#include "cybsp.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "cyabs_rtos.h"
+#include "cyabs_rtos_impl.h"
+
+/*******************************************************************************
+ * Macros
+ ******************************************************************************/
+#define BLINKY_TASK_NAME            ("Blinky")
+#define BLINKY_TASK_STACK_SIZE      (configMINIMAL_STACK_SIZE)
+#define BLINKY_TASK_PRIORITY        (tskIDLE_PRIORITY + 1)
+#define MAIN_TASK_NAME              ("Main")
+#define MAIN_TASK_STACK_SIZE        (configMINIMAL_STACK_SIZE)
+#define MAIN_TASK_PRIORITY          (tskIDLE_PRIORITY + 1)
+
+/* USER LED toggle period in milliseconds */
+#define USER_LED_TOGGLE_PERIOD_MS   1000u
+
+
+/* Enabling or disabling a MCWDT requires a wait time of upto 2 CLK_LF cycles
+ * to come into effect. This wait time value will depend on the actual CLK_LF
+ * frequency set by the BSP.
+ */
+#define LPTIMER_0_WAIT_TIME_USEC            (62U)
+
+/* Define the LPTimer interrupt priority number. '1' implies highest priority.
+ */
+#define APP_LPTIMER_INTERRUPT_PRIORITY      (1U)
+
+/*******************************************************************************
+ * Global Variables
+ ******************************************************************************/
+
+/* LPTimer HAL object */
+static mtb_hal_lptimer_t lptimer_obj;
+
+/* RTOS semaphore */
+static SemaphoreHandle_t xSemaphore;
+
+/*******************************************************************************
+ * Function Name: handle_app_error
+ ********************************************************************************
+ * Summary:
+ * User defined error handling function
+ *
+ * Parameters:
+ *  void
+ *
+ * Return:
+ *  void
+ *
+ *******************************************************************************/
+static void handle_app_error(void)
+{
+    /* Disable all interrupts. */
+    __disable_irq();
+
+    CY_ASSERT(0);
+
+    /* Infinite loop */
+    while(true);
+}
+
+/*******************************************************************************
+ * Function Name: blinky_task
+ ********************************************************************************
+ * Summary:
+ *  This RTOS task toggles the User LED each time the semaphore is obtained.
+ *
+ * Parameters:
+ *  void *pvParameters : Task parameter defined during task creation (unused)
+ *
+ * Return:
+ *  The RTOS task never returns.
+ *
+ *******************************************************************************/
+
+static void blinky_task(void *pvParameters)
+{
+
+    (void) pvParameters;
+
+    for(;;)
+    {
+        /* Block until the semaphore is given */
+        xSemaphoreTake(xSemaphore, portMAX_DELAY);
+
+        /* Toggle the USER LED state */
+        Cy_GPIO_Inv(CYBSP_USER_LED_PORT, CYBSP_USER_LED_PIN);
+    }
+}
+
+/*******************************************************************************
+ * Function Name: main_task
+ ********************************************************************************
+ * Summary:
+ *  This RTOS task releases the semaphore every USER_LED_TOGGLE_PERIOD_MS.
+ *
+ * Parameters:
+ *  void *pvParameters : Task parameter defined during task creation (unused)
+ *
+ * Return:
+ *  The RTOS task never returns.
+ *
+ *******************************************************************************/
+
+static void main_task(void *pvParameters)
+{
+    (void) pvParameters;
+
+
+    for(;;)
+    {
+
+        /* Block task for USER_LED_TOGGLE_PERIOD_MS. */
+        vTaskDelay(USER_LED_TOGGLE_PERIOD_MS);
+
+        /* Release semaphore */
+        xSemaphoreGive(xSemaphore);
+    }
+}
+
+/*******************************************************************************
+ * Function Name: lptimer_interrupt_handler
+ ********************************************************************************
+ * Summary:
+ * Interrupt handler function for LPTimer instance.
+ *
+ * Parameters:
+ *  void
+ *
+ * Return:
+ *  void
+ *
+ *******************************************************************************/
+static void lptimer_interrupt_handler(void)
+{
+    mtb_hal_lptimer_process_interrupt(&lptimer_obj);
+}
+
+/*******************************************************************************
+ * Function Name: setup_tickless_idle_timer
+ ********************************************************************************
+ * Summary:
+ * 1. This function first configures and initializes an interrupt for LPTimer.
+ * 2. Then it initializes the LPTimer HAL object to be used in the RTOS
+ *    tickless idle mode implementation to allow the device enter deep sleep
+ *    when idle task runs. LPTIMER_0 instance is configured for CM33 CPU.
+ * 3. It then passes the LPTimer object to abstraction RTOS library that
+ *    implements tickless idle mode
+ *
+ * Parameters:
+ *  void
+ *
+ * Return:
+ *  void
+ *
+ *******************************************************************************/
+static void setup_tickless_idle_timer(void)
+{
+    /* Interrupt configuration structure for LPTimer */
+    cy_stc_sysint_t lptimer_intr_cfg =
+    {
+            .intrSrc = CYBSP_CM33_LPTIMER_0_IRQ,
+            .intrPriority = APP_LPTIMER_INTERRUPT_PRIORITY
+    };
+
+    /* Initialize the LPTimer interrupt and specify the interrupt handler. */
+    cy_en_sysint_status_t interrupt_init_status =
+            Cy_SysInt_Init(&lptimer_intr_cfg,
+                    lptimer_interrupt_handler);
+
+    /* LPTimer interrupt initialization failed. Stop program execution. */
+    if(CY_SYSINT_SUCCESS != interrupt_init_status)
+    {
+        handle_app_error();
+    }
+
+    /* Enable NVIC interrupt. */
+    NVIC_EnableIRQ(lptimer_intr_cfg.intrSrc);
+
+    /* Initialize the MCWDT block */
+    cy_en_mcwdt_status_t mcwdt_init_status =
+            Cy_MCWDT_Init(CYBSP_CM33_LPTIMER_0_HW,
+                    &CYBSP_CM33_LPTIMER_0_config);
+
+    /* MCWDT initialization failed. Stop program execution. */
+    if(CY_MCWDT_SUCCESS != mcwdt_init_status)
+    {
+        handle_app_error();
+    }
+
+    /* Enable MCWDT instance */
+    Cy_MCWDT_Enable(CYBSP_CM33_LPTIMER_0_HW,
+            CY_MCWDT_CTR_Msk,
+            LPTIMER_0_WAIT_TIME_USEC);
+
+    /* Setup LPTimer using the HAL object and desired configuration as defined
+     * in the device configurator. */
+    cy_rslt_t result = mtb_hal_lptimer_setup(&lptimer_obj,
+            &CYBSP_CM33_LPTIMER_0_hal_config);
+
+    /* LPTimer setup failed. Stop program execution. */
+    if(CY_RSLT_SUCCESS != result)
+    {
+        handle_app_error();
+    }
+
+    /* Pass the LPTimer object to abstraction RTOS library that implements
+     * tickless idle mode
+     */
+    cyabs_rtos_set_lptimer(&lptimer_obj);
+}
+
+/*******************************************************************************
+ * Function Name: main
+ *******************************************************************************
+ * Summary:
+ * This is the main function for CM33 non-secure application.
+ *    1. It initializes the device and board peripherals.
+ *    2. It sets up the LPTimer instance for CM33 CPU.
+ *    4. It creates the FreeRTOS application task 'cm33_blinky_task'.
+ *    5. It starts the RTOS task scheduler.
+ *
+ * Parameters:
+ *  void
+ *
+ * Return:
+ *  int
+ *
+ ******************************************************************************/
+int main(void)
+{
+    cy_rslt_t result;
+    BaseType_t retval;
+
+    /* Initialize the device and board peripherals */
+    result = cybsp_init();
+
+    /* Board initialization failed. Stop program execution */
+    if (CY_RSLT_SUCCESS != result)
+    {
+        handle_app_error();
+    }
+    xSemaphore = xSemaphoreCreateBinary();
+    if( xSemaphore == NULL )
+    {
+        CY_ASSERT(0);
+    }
+
+    /* Enable global interrupts */
+    __enable_irq();
+
+    /* Setup the LPTimer instance for CM33 CPU. */
+    setup_tickless_idle_timer();
+
+    retval = xTaskCreate(blinky_task, BLINKY_TASK_NAME, BLINKY_TASK_STACK_SIZE, NULL, BLINKY_TASK_PRIORITY, NULL );
+    if (retval != pdPASS)
+    {
+        CY_ASSERT(0);
+    }
+
+    retval = xTaskCreate(main_task, MAIN_TASK_NAME, MAIN_TASK_STACK_SIZE, NULL, MAIN_TASK_PRIORITY, NULL );
+    if (retval != pdPASS)
+    {
+        CY_ASSERT(0);
+    }
+
+    /* Start the scheduler */
+    vTaskStartScheduler();
+}
+
+/* [] END OF FILE */
+
